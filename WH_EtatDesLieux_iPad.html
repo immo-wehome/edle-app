@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>WE HOME — État des lieux</title>
+<script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap');
+
+  :root {
+    --pink: #E91E8C;
+    --pink-light: #fce8f4;
+    --pink-mid: #f4acd9;
+    --black: #111111;
+    --dark: #1e1e1e;
+    --gray: #6b6b6b;
+    --lgray: #f4f4f2;
+    --border: #e2e2e0;
+    --white: #ffffff;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow: 0 2px 16px rgba(0,0,0,0.07);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--lgray);
+    color: var(--black);
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--black);
+    padding: 18px 20px 14px;
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .logo-text { color: var(--white); font-size: 19px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo-text span { color: var(--pink); }
+  .step-badge {
+    margin-left: auto;
+    background: var(--pink);
+    color: white; font-size: 13px; font-weight: 500;
+    padding: 4px 12px; border-radius: 20px;
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar {
+    height: 3px; background: var(--border);
+  }
+  .progress-fill {
+    height: 100%; background: var(--pink);
+    transition: width 0.4s ease;
+  }
+
+  /* ── Screens ── */
+  .screen { display: none; padding: 20px; }
+  .screen.active { display: block; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+  .card-title {
+    font-size: 13px; font-weight: 600; color: var(--pink);
+    text-transform: uppercase; letter-spacing: 0.8px;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::before {
+    content: ''; display: block;
+    width: 3px; height: 16px;
+    background: var(--pink); border-radius: 2px;
+  }
+
+  /* ── Form fields ── */
+  .field { margin-bottom: 14px; }
+  label { display: block; font-size: 13px; color: var(--gray); margin-bottom: 5px; font-weight: 500; }
+  input[type="text"], input[type="date"], input[type="number"], select, textarea {
+    width: 100%; padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; color: var(--black);
+    background: var(--white);
+    -webkit-appearance: none;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--pink);
+  }
+  textarea { resize: vertical; min-height: 70px; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ── État checkbox ── */
+  .etat-group { display: flex; gap: 8px; margin-top: 4px; }
+  .etat-btn {
+    flex: 1; padding: 9px 4px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+    background: var(--white); color: var(--gray);
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; text-align: center; transition: all 0.18s;
+  }
+  .etat-btn.bon.active   { background: #e8f8f0; border-color: #2ecc71; color: #1a8a4a; }
+  .etat-btn.moyen.active { background: #fff8e6; border-color: #f0b429; color: #9a6f00; }
+  .etat-btn.mauvais.active { background: #fdecea; border-color: #e74c3c; color: #c0392b; }
+
+  /* ── Photo zone ── */
+  .photo-zone {
+    border: 2px dashed var(--pink-mid);
+    border-radius: var(--radius-sm);
+    background: var(--pink-light);
+    padding: 0; overflow: hidden;
+    position: relative; cursor: pointer;
+    min-height: 140px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .photo-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .photo-placeholder {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    color: var(--pink); pointer-events: none;
+  }
+  .photo-placeholder svg { width: 36px; height: 36px; }
+  .photo-placeholder span { font-size: 13px; font-weight: 500; }
+  .photo-preview {
+    width: 100%; height: 160px; object-fit: cover;
+    display: none;
+  }
+  .photo-zone.has-photo .photo-placeholder { display: none; }
+  .photo-zone.has-photo .photo-preview { display: block; }
+
+  /* ── Pièce tabs ── */
+  .piece-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+  .piece-item {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: border-color 0.2s, transform 0.1s;
+  }
+  .piece-item:active { transform: scale(0.98); }
+  .piece-item.done { border-color: #2ecc71; }
+  .piece-item-left { display: flex; align-items: center; gap: 12px; }
+  .piece-icon { font-size: 24px; }
+  .piece-name { font-size: 16px; font-weight: 500; }
+  .piece-sub { font-size: 12px; color: var(--gray); margin-top: 2px; }
+  .piece-status { font-size: 22px; }
+
+  /* ── Élément inspection ── */
+  .element-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 12px;
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .element-name {
+    font-size: 15px; font-weight: 600; margin-bottom: 12px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--border);
+  }
+  .photos-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: block; width: 100%;
+    padding: 16px; border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600;
+    border: none; cursor: pointer; text-align: center;
+    transition: all 0.18s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--pink); color: white; }
+  .btn-primary:hover { background: #c9177a; }
+  .btn-secondary {
+    background: var(--white); color: var(--black);
+    border: 1.5px solid var(--border);
+  }
+  .btn-back {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: none; color: var(--gray);
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    cursor: pointer; padding: 0 0 16px 0;
+  }
+  .btn-generate {
+    background: var(--black); color: white;
+    font-size: 17px; padding: 18px;
+    border-radius: var(--radius);
+    border: none; width: 100%; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    transition: background 0.2s;
+  }
+  .btn-generate:active { background: #333; }
+  .btn-generate .arrow { font-size: 20px; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: var(--black); color: white;
+    padding: 12px 24px; border-radius: 30px;
+    font-size: 14px; font-weight: 500;
+    opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; z-index: 999;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  /* ── Section title ── */
+  .section-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px; margin-bottom: 16px; color: var(--black);
+  }
+  .section-sub { font-size: 14px; color: var(--gray); margin-bottom: 20px; margin-top: -10px; }
+
+  /* ── Spinner ── */
+  .spinner-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(255,255,255,0.88);
+    z-index: 500; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+  }
+  .spinner-overlay.show { display: flex; }
+  .spinner {
+    width: 44px; height: 44px;
+    border: 3px solid var(--pink-mid);
+    border-top-color: var(--pink);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner-label { font-size: 15px; color: var(--gray); font-weight: 500; }
+
+  /* ── Recap screen ── */
+  .recap-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .recap-label { color: var(--gray); }
+  .recap-value { font-weight: 500; color: var(--black); text-align: right; max-width: 55%; }
+  .recap-piece { font-weight: 600; margin-top: 8px; color: var(--pink); font-size: 13px; text-transform: uppercase; }
+  .recap-photo-thumb { width: 44px; height: 34px; object-fit: cover; border-radius: 5px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-text">WE <span>HOME</span></div>
+  <div class="step-badge" id="stepBadge">Étape 1/5</div>
+</header>
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:20%"></div></div>
+
+<!-- ══ SCREEN 1 : Infos générales ══ -->
+<div class="screen active" id="screen1">
+  <div style="padding: 20px 0 8px">
+    <div class="section-title">Informations générales</div>
+    <div class="section-sub">Renseignez les parties et le bien concerné.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Le bien</div>
+    <div class="field"><label>Adresse complète</label><input type="text" id="adresse" placeholder="Rue, numéro, code postal, commune"></div>
+    <div class="row2">
+      <div class="field"><label>Type de bien</label>
+        <select id="typeBien">
+          <option>Appartement</option><option>Maison</option><option>Studio</option>
+          <option>Duplex</option><option>Garage</option><option>Autre</option>
+        </select>
+      </div>
+      <div class="field"><label>Date d'entrée</label><input type="date" id="dateEntree"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Bailleur(s)</div>
+    <div class="field"><label>Nom complet</label><input type="text" id="bailleur" placeholder="Nom Prénom"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Locataire(s)</div>
+    <div class="field"><label>Nom complet</label><input type="text" id="locataire" placeholder="Nom Prénom"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Financier</div>
+    <div class="row2">
+      <div class="field"><label>Loyer mensuel (€)</label><input type="number" id="loyer" placeholder="0"></div>
+      <div class="field"><label>Garantie locative (€)</label><input type="number" id="garantie" placeholder="0"></div>
+    </div>
+    <div class="field"><label>Agent / Mandataire</label><input type="text" id="agent" placeholder="Nom de l'agent"></div>
+  </div>
+
+  <button class="btn btn-primary" onclick="goTo(2)">Continuer →</button>
+</div>
+
+<!-- ══ SCREEN 2 : Compteurs & clés ══ -->
+<div class="screen" id="screen2">
+  <div style="padding: 20px 0 8px">
+    <button class="btn-back" onclick="goTo(1)">← Retour</button>
+    <div class="section-title">Compteurs & clés</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Relevés de compteurs</div>
+    <div class="row2">
+      <div class="field"><label>Élec. jour (kWh)</label><input type="number" id="elecJour" placeholder="0"></div>
+      <div class="field"><label>Élec. nuit (kWh)</label><input type="number" id="elecNuit" placeholder="0"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Gaz</label><input type="number" id="gaz" placeholder="0"></div>
+      <div class="field"><label>Eau</label><input type="number" id="eau" placeholder="0"></div>
+    </div>
+    <div class="field"><label>N° compteur(s)</label><input type="text" id="numCompteur" placeholder="ex. CPT-12345"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Remise des clés</div>
+    <div class="field"><label>Clés remises (nombre & type)</label><input type="text" id="cles" placeholder="ex. 2× porte principale, 1× boîte aux lettres"></div>
+    <div class="field"><label>Codes / badges / digicode</label><input type="text" id="codes" placeholder="ex. Digicode : 1234"></div>
+  </div>
+
+  <button class="btn btn-primary" onclick="goTo(3)">Continuer →</button>
+</div>
+
+<!-- ══ SCREEN 3 : Pièces ══ -->
+<div class="screen" id="screen3">
+  <div style="padding: 20px 0 8px">
+    <button class="btn-back" onclick="goTo(2)">← Retour</button>
+    <div class="section-title">Inspection par pièce</div>
+    <div class="section-sub">Touchez une pièce pour l'inspecter.</div>
+  </div>
+
+  <div class="piece-list" id="pieceList"></div>
+
+  <button class="btn btn-primary" onclick="goTo(4)" style="margin-top:8px">Continuer →</button>
+</div>
+
+<!-- ══ SCREEN 3b : Détail d'une pièce ══ -->
+<div class="screen" id="screen3b">
+  <div style="padding: 20px 0 8px">
+    <button class="btn-back" onclick="goTo(3)">← Liste des pièces</button>
+    <div class="section-title" id="screen3bTitle">Salon</div>
+  </div>
+  <div id="elementsContainer"></div>
+  <button class="btn btn-primary" onclick="savePieceAndReturn()">Enregistrer cette pièce ✓</button>
+</div>
+
+<!-- ══ SCREEN 4 : Observations ══ -->
+<div class="screen" id="screen4">
+  <div style="padding: 20px 0 8px">
+    <button class="btn-back" onclick="goTo(3)">← Retour</button>
+    <div class="section-title">Observations générales</div>
+  </div>
+  <div class="card">
+    <div class="field">
+      <label>Commentaires libres</label>
+      <textarea id="observations" rows="5" placeholder="Remarques générales sur l'état du bien, équipements, etc."></textarea>
+    </div>
+    <div class="field">
+      <label>Propreté générale</label>
+      <div class="etat-group">
+        <button class="etat-btn bon" onclick="setEtatGlobal('Bonne',this)">Bonne</button>
+        <button class="etat-btn moyen" onclick="setEtatGlobal('Moyenne',this)">Moyenne</button>
+        <button class="etat-btn mauvais" onclick="setEtatGlobal('Mauvaise',this)">Mauvaise</button>
+      </div>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="goTo(5)">Continuer →</button>
+</div>
+
+<!-- ══ SCREEN 5 : Signatures & génération ══ -->
+<div class="screen" id="screen5">
+  <div style="padding: 20px 0 8px">
+    <button class="btn-back" onclick="goTo(4)">← Retour</button>
+    <div class="section-title">Finalisation</div>
+    <div class="section-sub">Vérifiez et générez le document.</div>
+  </div>
+
+  <div class="card" id="recapCard"></div>
+
+  <div class="card">
+    <div class="card-title">Signatures</div>
+    <div class="field"><label>Nom bailleur (confirmation)</label><input type="text" id="sigBailleur" placeholder="Nom Prénom"></div>
+    <div class="field"><label>Nom locataire (confirmation)</label><input type="text" id="sigLocataire" placeholder="Nom Prénom"></div>
+  </div>
+
+  <button class="btn-generate" onclick="generateDocx()">
+    <span>Générer le document .docx</span>
+    <span class="arrow">↓</span>
+  </button>
+</div>
+
+<!-- Spinner -->
+<div class="spinner-overlay" id="spinner">
+  <div class="spinner"></div>
+  <div class="spinner-label">Génération du document…</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────
+const PIECES = [
+  { id:'entree',   nom:'Entrée / Hall',       icon:'🚪' },
+  { id:'salon',    nom:'Salon / Séjour',       icon:'🛋️' },
+  { id:'cuisine',  nom:'Cuisine',              icon:'🍳' },
+  { id:'chambre1', nom:'Chambre 1',            icon:'🛏️' },
+  { id:'chambre2', nom:'Chambre 2',            icon:'🛏️' },
+  { id:'sdb',      nom:'Salle de bain',        icon:'🚿' },
+  { id:'wc',       nom:'WC / Toilettes',       icon:'🚽' },
+  { id:'garage',   nom:'Garage / Cave / Grenier', icon:'📦' },
+];
+const ELEMENTS = [
+  'Murs & plafond', 'Sol / revêtement', 'Fenêtres & volets',
+  'Portes & serrures', 'Prises & interrupteurs', 'Luminaires',
+  'Chauffage / radiateur', 'Autres'
+];
+
+// pieceData[pieceId][elementName] = { etat, remarque, photo1b64, photo2b64 }
+const pieceData = {};
+PIECES.forEach(p => { pieceData[p.id] = {}; });
+
+let currentPiece = null;
+let etatGlobal = '';
+
+// ── Navigation ────────────────────────────────────────────────────
+function goTo(n) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen' + n).classList.add('active');
+  const labels = ['','1/5','2/5','3/5','4/5','5/5'];
+  document.getElementById('stepBadge').textContent = 'Étape ' + labels[n];
+  document.getElementById('progressFill').style.width = (n * 20) + '%';
+  if (n === 3) renderPieceList();
+  if (n === 5) renderRecap();
+  window.scrollTo(0, 0);
+}
+
+// ── Pièce list ────────────────────────────────────────────────────
+function renderPieceList() {
+  const el = document.getElementById('pieceList');
+  el.innerHTML = '';
+  PIECES.forEach(piece => {
+    const done = isPieceDone(piece.id);
+    const count = countPhotos(piece.id);
+    const div = document.createElement('div');
+    div.className = 'piece-item' + (done ? ' done' : '');
+    div.innerHTML = `
+      <div class="piece-item-left">
+        <div class="piece-icon">${piece.icon}</div>
+        <div>
+          <div class="piece-name">${piece.nom}</div>
+          <div class="piece-sub">${count} photo(s) ajoutée(s)</div>
+        </div>
+      </div>
+      <div class="piece-status">${done ? '✅' : '›'}</div>
+    `;
+    div.onclick = () => openPiece(piece);
+    el.appendChild(div);
+  });
+}
+
+function isPieceDone(id) {
+  return Object.values(pieceData[id]).some(e => e.etat || e.remarque || e.photo1b64 || e.photo2b64);
+}
+function countPhotos(id) {
+  let n = 0;
+  Object.values(pieceData[id]).forEach(e => {
+    if(e.photo1b64) n++;
+    if(e.photo2b64) n++;
+  });
+  return n;
+}
+
+// ── Ouvrir une pièce ──────────────────────────────────────────────
+function openPiece(piece) {
+  currentPiece = piece;
+  document.getElementById('screen3bTitle').textContent = piece.icon + '  ' + piece.nom;
+  document.getElementById('progressFill').style.width = '60%';
+  document.getElementById('stepBadge').textContent = piece.nom;
+
+  const container = document.getElementById('elementsContainer');
+  container.innerHTML = '';
+
+  ELEMENTS.forEach(elemName => {
+    const saved = pieceData[piece.id][elemName] || {};
+    const card = document.createElement('div');
+    card.className = 'element-card';
+    card.dataset.elem = elemName;
+
+    card.innerHTML = `
+      <div class="element-name">${elemName}</div>
+      <div class="photos-row">
+        <div>
+          <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:5px">Photo 1</label>
+          <div class="photo-zone" id="pz_${safeId(elemName)}_1" onclick="triggerPhoto('${safeId(elemName)}',1)">
+            <input type="file" accept="image/*" capture="environment" id="fi_${safeId(elemName)}_1"
+              onchange="handlePhoto(this,'${safeId(elemName)}',1,'${elemName}')">
+            <div class="photo-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 0 2-2l2-3h10l2 3a2 2 0 0 0 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              <span>Prendre photo</span>
+            </div>
+            <img class="photo-preview" id="pp_${safeId(elemName)}_1" src="">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:5px">Photo 2</label>
+          <div class="photo-zone" id="pz_${safeId(elemName)}_2" onclick="triggerPhoto('${safeId(elemName)}',2)">
+            <input type="file" accept="image/*" capture="environment" id="fi_${safeId(elemName)}_2"
+              onchange="handlePhoto(this,'${safeId(elemName)}',2,'${elemName}')">
+            <div class="photo-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 0 2-2l2-3h10l2 3a2 2 0 0 0 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              <span>Prendre photo</span>
+            </div>
+            <img class="photo-preview" id="pp_${safeId(elemName)}_2" src="">
+          </div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:8px">
+        <label>État</label>
+        <div class="etat-group">
+          <button class="etat-btn bon"     onclick="setEtat('${elemName}','Bon',this)">Bon</button>
+          <button class="etat-btn moyen"   onclick="setEtat('${elemName}','Moyen',this)">Moyen</button>
+          <button class="etat-btn mauvais" onclick="setEtat('${elemName}','Mauvais',this)">Mauvais</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Remarque</label>
+        <textarea id="rem_${safeId(elemName)}" placeholder="Observations sur cet élément…">${saved.remarque||''}</textarea>
+      </div>
+    `;
+    container.appendChild(card);
+
+    // Restore saved state
+    if(saved.etat) {
+      const btns = card.querySelectorAll('.etat-btn');
+      btns.forEach(b => { if(b.textContent===saved.etat) b.classList.add('active'); });
+    }
+    if(saved.photo1b64) {
+      document.getElementById('pp_'+safeId(elemName)+'_1').src = saved.photo1b64;
+      document.getElementById('pz_'+safeId(elemName)+'_1').classList.add('has-photo');
+    }
+    if(saved.photo2b64) {
+      document.getElementById('pp_'+safeId(elemName)+'_2').src = saved.photo2b64;
+      document.getElementById('pz_'+safeId(elemName)+'_2').classList.add('has-photo');
+    }
+  });
+
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen3b').classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function safeId(s) { return s.replace(/[^a-z0-9]/gi,'_'); }
+
+function triggerPhoto(sid, n) {
+  document.getElementById('fi_'+sid+'_'+n).click();
+}
+
+function handlePhoto(input, sid, n, elemName) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    resizeImage(e.target.result, 800, 533, function(b64) {
+      const zone = document.getElementById('pz_'+sid+'_'+n);
+      const preview = document.getElementById('pp_'+sid+'_'+n);
+      preview.src = b64;
+      zone.classList.add('has-photo');
+      if(!pieceData[currentPiece.id][elemName]) pieceData[currentPiece.id][elemName] = {};
+      pieceData[currentPiece.id][elemName]['photo'+n+'b64'] = b64;
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function resizeImage(src, maxW, maxH, cb) {
+  const img = new Image();
+  img.onload = function() {
+    let w = img.width, h = img.height;
+    if(w > maxW) { h = h * maxW / w; w = maxW; }
+    if(h > maxH) { w = w * maxH / h; h = maxH; }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    cb(canvas.toDataURL('image/jpeg', 0.82));
+  };
+  img.src = src;
+}
+
+function setEtat(elemName, val, btn) {
+  if(!currentPiece) return;
+  if(!pieceData[currentPiece.id][elemName]) pieceData[currentPiece.id][elemName] = {};
+  pieceData[currentPiece.id][elemName].etat = val;
+  const group = btn.closest('.etat-group');
+  group.querySelectorAll('.etat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setEtatGlobal(val, btn) {
+  etatGlobal = val;
+  const group = btn.closest('.etat-group');
+  group.querySelectorAll('.etat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function savePieceAndReturn() {
+  if(!currentPiece) { goTo(3); return; }
+  ELEMENTS.forEach(elemName => {
+    const sid = safeId(elemName);
+    const remEl = document.getElementById('rem_'+sid);
+    if(remEl) {
+      if(!pieceData[currentPiece.id][elemName]) pieceData[currentPiece.id][elemName] = {};
+      pieceData[currentPiece.id][elemName].remarque = remEl.value;
+    }
+  });
+  showToast('✓ ' + currentPiece.nom + ' enregistré');
+  goTo(3);
+}
+
+// ── Recap ─────────────────────────────────────────────────────────
+function renderRecap() {
+  const card = document.getElementById('recapCard');
+  const rows = [
+    ['Adresse', v('adresse')], ['Type', v('typeBien')], ['Date d\'entrée', v('dateEntree')],
+    ['Bailleur', v('bailleur')], ['Locataire', v('locataire')],
+    ['Loyer', v('loyer') ? v('loyer') + ' €' : ''], ['Garantie', v('garantie') ? v('garantie') + ' €' : ''],
+  ];
+  let html = '<div class="card-title">Récapitulatif</div>';
+  rows.forEach(([l,val]) => {
+    if(val) html += `<div class="recap-row"><span class="recap-label">${l}</span><span class="recap-value">${val}</span></div>`;
+  });
+
+  let photoCount = 0;
+  PIECES.forEach(p => { photoCount += countPhotos(p.id); });
+  html += `<div class="recap-row"><span class="recap-label">Photos prises</span><span class="recap-value" style="color:var(--pink);font-weight:600">${photoCount} photos</span></div>`;
+
+  card.innerHTML = html;
+  document.getElementById('sigBailleur').value = v('bailleur');
+  document.getElementById('sigLocataire').value = v('locataire');
+}
+
+function v(id) { const el=document.getElementById(id); return el ? el.value : ''; }
+
+// ── Génération DOCX ───────────────────────────────────────────────
+async function generateDocx() {
+  document.getElementById('spinner').classList.add('show');
+
+  await new Promise(r => setTimeout(r, 80)); // let UI update
+
+  try {
+    const {
+      Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+      AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign, ImageRun
+    } = docx;
+
+    const PINK_HEX = 'E91E8C';
+    const BLACK_HEX = '111111';
+    const LGRAY_HEX = 'F4F4F2';
+    const WHITE_HEX = 'FFFFFF';
+
+    const bThin = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' };
+    const bNone = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+    const allThin = { top: bThin, bottom: bThin, left: bThin, right: bThin };
+    const allNone = { top: bNone, bottom: bNone, left: bNone, right: bNone };
+
+    function txt(text, opts={}) {
+      return new TextRun({ text: text||'', font:'Arial', size: opts.size||20,
+        bold: opts.bold||false, color: opts.color||BLACK_HEX, italics: opts.italic||false });
+    }
+    function para(children, opts={}) {
+      return new Paragraph({
+        alignment: opts.align || AlignmentType.LEFT,
+        spacing: { before: opts.before||0, after: opts.after||80 },
+        border: opts.border||undefined,
+        children: Array.isArray(children) ? children : [children]
+      });
+    }
+    function secTitle(label) {
+      return para([txt(label.toUpperCase(), {bold:true, size:24})], {
+        before:260, after:140,
+        border:{ left:{ style:BorderStyle.SINGLE, size:18, color:PINK_HEX, space:8 } }
+      });
+    }
+    function cell(text, opts={}) {
+      return new TableCell({
+        borders: opts.borders||allThin,
+        width: opts.width ? {size:opts.width, type:WidthType.DXA} : undefined,
+        shading: opts.shading||undefined,
+        verticalAlign: VerticalAlign.CENTER,
+        columnSpan: opts.span||undefined,
+        margins: {top:80,bottom:80,left:140,right:140},
+        children:[para([txt(text||'', {bold:opts.bold,color:opts.color,size:opts.size,italic:opts.italic})],
+          {align:opts.align})]
+      });
+    }
+    function hRow(cols) {
+      return new TableRow({ children: cols.map(([t,w]) => new TableCell({
+        borders:allThin,
+        width:{size:w,type:WidthType.DXA},
+        shading:{fill:BLACK_HEX,type:ShadingType.CLEAR},
+        margins:{top:100,bottom:100,left:140,right:140},
+        children:[para([txt(t,{bold:true,color:WHITE_HEX,size:19})],{align:AlignmentType.CENTER})]
+      }))});
+    }
+    function infoRow(label, val='') {
+      return new Table({
+        width:{size:9026,type:WidthType.DXA}, columnWidths:[2700,6326],
+        rows:[new TableRow({ height:{value:480,rule:'atLeast'}, children:[
+          cell(label,{width:2700,bold:true,shading:{fill:LGRAY_HEX,type:ShadingType.CLEAR}}),
+          cell(val,{width:6326})
+        ]})]
+      });
+    }
+
+    // Convert base64 jpeg to Uint8Array
+    function b64ToUint8(b64str) {
+      const b64 = b64str.split(',')[1];
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+      return arr;
+    }
+
+    // Photo cell — standardisé 160×107px (3×2 ratio)
+    function makePhotoCell(b64, width) {
+      const children = [];
+      if(b64) {
+        try {
+          children.push(para([new ImageRun({
+            type:'jpeg', data: b64ToUint8(b64),
+            transformation:{ width:160, height:107 }
+          })], {align:AlignmentType.CENTER}));
+        } catch(e) {
+          children.push(para([txt('Photo', {size:16,color:'AAAAAA',italic:true})],
+            {align:AlignmentType.CENTER}));
+        }
+      } else {
+        children.push(para([txt('—', {size:16,color:'CCCCCC'})],{align:AlignmentType.CENTER}));
+      }
+      return new TableCell({
+        borders:allThin,
+        width:{size:width,type:WidthType.DXA},
+        shading:{fill:'F9F9F9',type:ShadingType.CLEAR},
+        margins:{top:60,bottom:60,left:80,right:80},
+        children
+      });
+    }
+
+    const children = [];
+
+    // ── Titre ──
+    children.push(para([txt('IMMO WE HOME SRL', {bold:true,size:28,color:BLACK_HEX})],
+      {align:AlignmentType.CENTER, after:40}));
+    children.push(para([txt('Rue de Bomerée 11  |  6032 Mont-sur-Marchienne  |  071 / 116 117',
+      {size:17,color:'666666'})], {align:AlignmentType.CENTER, after:60}));
+    children.push(new Paragraph({
+      alignment: AlignmentType.CENTER, spacing:{before:80,after:0},
+      border:{ bottom:{style:BorderStyle.SINGLE,size:6,color:PINK_HEX,space:6} },
+      children:[txt('ÉTAT DES LIEUX D\'ENTRÉE',{bold:true,size:44})]
+    }));
+    children.push(para([txt('Document contradictoire établi entre bailleur et locataire',
+      {size:18,color:'777777',italic:true})],{align:AlignmentType.CENTER,before:80,after:300}));
+
+    // ── 1. Infos générales ──
+    children.push(secTitle('1. Informations générales'));
+    const dateEntree = v('dateEntree') ? new Date(v('dateEntree')).toLocaleDateString('fr-BE') : '';
+    [
+      ['Adresse du bien', v('adresse')],
+      ['Type de bien', v('typeBien')],
+      ['Date d\'entrée', dateEntree],
+      ['Bailleur(s)', v('bailleur')],
+      ['Locataire(s)', v('locataire')],
+      ['Loyer mensuel', v('loyer') ? v('loyer')+' €' : ''],
+      ['Garantie locative', v('garantie') ? v('garantie')+' €' : ''],
+      ['Agent / Mandataire', v('agent')],
+    ].forEach(([l,val]) => children.push(infoRow(l, val)));
+    children.push(para([]));
+
+    // ── 2. Compteurs ──
+    children.push(secTitle('2. Relevés de compteurs'));
+    [
+      ['Électricité – Index jour', v('elecJour') ? v('elecJour')+' kWh' : ''],
+      ['Électricité – Index nuit', v('elecNuit') ? v('elecNuit')+' kWh' : ''],
+      ['Gaz – Index', v('gaz')],
+      ['Eau – Index', v('eau')],
+      ['N° compteur(s)', v('numCompteur')],
+    ].forEach(([l,val]) => children.push(infoRow(l, val)));
+    children.push(para([]));
+
+    // ── 3. Clés ──
+    children.push(secTitle('3. Remise des clés & accès'));
+    children.push(infoRow('Clés remises', v('cles')));
+    children.push(infoRow('Codes / badges', v('codes')));
+    children.push(para([]));
+
+    // ── 4. État général ──
+    children.push(secTitle('4. État général du bien'));
+    children.push(new Table({
+      width:{size:9026,type:WidthType.DXA}, columnWidths:[4513,4513],
+      rows:[
+        hRow([['Propreté générale',4513],['État global',4513]]),
+        new TableRow({ height:{value:560,rule:'atLeast'}, children:[
+          cell(etatGlobal||'',{width:4513}),
+          cell('',{width:4513})
+        ]})
+      ]
+    }));
+    children.push(para([]));
+
+    // ── 5. Pièces ──
+    children.push(secTitle('5. Détail par pièce'));
+
+    for(const piece of PIECES) {
+      // En-tête pièce
+      children.push(new Table({
+        width:{size:9026,type:WidthType.DXA}, columnWidths:[9026],
+        rows:[new TableRow({ children:[new TableCell({
+          borders:{top:bThin,bottom:bThin,right:bThin,
+            left:{style:BorderStyle.SINGLE,size:12,color:PINK_HEX}},
+          width:{size:9026,type:WidthType.DXA},
+          shading:{fill:'F9F0F6',type:ShadingType.CLEAR},
+          margins:{top:100,bottom:100,left:180,right:140},
+          children:[para([txt(piece.nom, {bold:true,size:22,color:BLACK_HEX})])]
+        })]})]}));
+
+      // Tableau éléments
+      // Colonnes: Élément(1800) | État(1300) | Remarques(2326) | Photo1(1800) | Photo2(1800) = 9026
+      const COL = [1800,1300,2326,1800,1800];
+      children.push(new Table({
+        width:{size:9026,type:WidthType.DXA}, columnWidths:COL,
+        rows:[
+          hRow([['Élément',1800],['État',1300],['Remarques',2326],['Photo 1',1800],['Photo 2',1800]]),
+          ...ELEMENTS.map((elemName, i) => {
+            const d = pieceData[piece.id][elemName] || {};
+            return new TableRow({
+              children:[
+                cell(elemName, {width:1800,
+                  shading:{fill: i%2===0?LGRAY_HEX:WHITE_HEX, type:ShadingType.CLEAR}}),
+                cell(d.etat||'', {width:1300, align:AlignmentType.CENTER,
+                  color: d.etat==='Bon'?'1A8A4A': d.etat==='Mauvais'?'C0392B':'9A6F00'}),
+                cell(d.remarque||'', {width:2326}),
+                makePhotoCell(d.photo1b64, 1800),
+                makePhotoCell(d.photo2b64, 1800),
+              ]
+            });
+          })
+        ]
+      }));
+      children.push(para([], {after:200}));
+    }
+
+    // ── 6. Observations ──
+    children.push(secTitle('6. Observations générales'));
+    children.push(new Table({
+      width:{size:9026,type:WidthType.DXA}, columnWidths:[9026],
+      rows:[new TableRow({ height:{value:1800,rule:'atLeast'}, children:[new TableCell({
+        borders:allThin, width:{size:9026,type:WidthType.DXA},
+        margins:{top:120,bottom:120,left:160,right:160},
+        children:[para([txt(v('observations'))])]
+      })]})]
+    }));
+    children.push(para([]));
+
+    // ── 7. Signatures ──
+    children.push(secTitle('7. Signatures'));
+    children.push(para([txt('Les soussignés certifient avoir pris connaissance du présent état des lieux d\'entrée et en approuvent le contenu, y compris les photos contradictoires.',{size:18})],{after:180}));
+    children.push(new Table({
+      width:{size:9026,type:WidthType.DXA}, columnWidths:[4413,200,4413],
+      rows:[
+        new TableRow({ children:[
+          cell('Le(s) bailleur(s) :', {width:4413,bold:true,borders:allNone}),
+          new TableCell({borders:allNone,width:{size:200,type:WidthType.DXA},children:[para([])]}),
+          cell('Le(s) locataire(s) :', {width:4413,bold:true,borders:allNone}),
+        ]}),
+        new TableRow({ height:{value:1800,rule:'atLeast'}, children:[
+          cell(v('sigBailleur')||'', {width:4413,color:'888888',italic:true}),
+          new TableCell({borders:allNone,width:{size:200,type:WidthType.DXA},children:[para([])]}),
+          cell(v('sigLocataire')||'', {width:4413,color:'888888',italic:true}),
+        ]})
+      ]
+    }));
+    children.push(para([]));
+
+    // ── Pied ──
+    children.push(new Paragraph({
+      spacing:{before:200,after:0},
+      alignment:AlignmentType.CENTER,
+      border:{top:{style:BorderStyle.SINGLE,size:2,color:'DDDDDD',space:6}},
+      children:[txt('IMMO WE HOME SRL  •  Rue de Bomerée 11, 6032 Mont-sur-Marchienne  •  071 / 116 117  •  secretariat@immo-wehome.be',
+        {size:16,color:'AAAAAA'})]
+    }));
+
+    const doc = new Document({
+      styles:{ default:{ document:{ run:{ font:'Arial', size:20 } } } },
+      sections:[{
+        properties:{ page:{
+          size:{width:11906,height:16838},
+          margin:{top:900,right:720,bottom:900,left:720}
+        }},
+        children
+      }]
+    });
+
+    const buffer = await Packer.toBuffer(doc);
+    const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeName = (v('adresse')||'etat-des-lieux').replace(/[^a-z0-9]/gi,'-').substring(0,40);
+    a.href = url;
+    a.download = 'WH_EdL_' + safeName + '.docx';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✓ Document généré avec succès !');
+  } catch(err) {
+    console.error(err);
+    showToast('Erreur : ' + err.message);
+  }
+
+  document.getElementById('spinner').classList.remove('show');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+document.getElementById('dateEntree').valueAsDate = new Date();
+</script>
+</body>
+</html>
