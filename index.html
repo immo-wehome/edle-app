@@ -269,7 +269,38 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .spinner-label { font-size: 15px; color: var(--gray); font-weight: 500; }
 
-  /* ── Recap screen ── */
+  .sig-wrap {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    position: relative;
+    touch-action: none; /* crucial — empêche le scroll pendant la signature */
+  }
+  .sig-canvas {
+    display: block;
+    width: 100%;
+    background: #fafafa;
+    cursor: crosshair;
+  }
+  .sig-actions {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 6px 10px;
+    border-top: 1px solid var(--border);
+    background: var(--lgray);
+  }
+  .sig-clear {
+    font-size: 12px; color: var(--gray); font-weight: 500;
+    background: none; border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 12px; cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .sig-label {
+    font-size: 11px; color: #bbb; position: absolute;
+    bottom: 36px; left: 50%; transform: translateX(-50%);
+    pointer-events: none; white-space: nowrap;
+  }
+  .sig-done { border-color: #2ecc71 !important; }
   .recap-row {
     display: flex; justify-content: space-between; align-items: center;
     padding: 10px 0; border-bottom: 1px solid var(--border);
@@ -415,16 +446,44 @@
 <div class="screen" id="screen5">
   <div style="padding: 20px 0 8px">
     <button class="btn-back" onclick="goTo(4)">← Retour</button>
-    <div class="section-title">Finalisation</div>
-    <div class="section-sub">Vérifiez et générez le document.</div>
+    <div class="section-title">Signatures & génération</div>
+    <div class="section-sub">Faites signer bailleur et locataire avec le doigt.</div>
   </div>
 
   <div class="card" id="recapCard"></div>
 
+  <!-- Signature bailleur -->
   <div class="card">
-    <div class="card-title">Signatures</div>
-    <div class="field"><label>Nom bailleur (confirmation)</label><input type="text" id="sigBailleur" placeholder="Nom Prénom"></div>
-    <div class="field"><label>Nom locataire (confirmation)</label><input type="text" id="sigLocataire" placeholder="Nom Prénom"></div>
+    <div class="card-title">Signature bailleur</div>
+    <div class="field">
+      <label>Nom complet</label>
+      <input type="text" id="sigBailleur" placeholder="Nom Prénom">
+    </div>
+    <label style="font-size:13px;color:var(--gray);font-weight:500;display:block;margin-bottom:6px">Signature (dessinez ci-dessous)</label>
+    <div class="sig-wrap" id="wrapB">
+      <canvas class="sig-canvas" id="canvasB" height="160"></canvas>
+      <span class="sig-label">✍️ Signez ici avec le doigt</span>
+      <div class="sig-actions">
+        <button class="sig-clear" onclick="clearSig('B')">Effacer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Signature locataire -->
+  <div class="card">
+    <div class="card-title">Signature locataire</div>
+    <div class="field">
+      <label>Nom complet</label>
+      <input type="text" id="sigLocataire" placeholder="Nom Prénom">
+    </div>
+    <label style="font-size:13px;color:var(--gray);font-weight:500;display:block;margin-bottom:6px">Signature (dessinez ci-dessous)</label>
+    <div class="sig-wrap" id="wrapL">
+      <canvas class="sig-canvas" id="canvasL" height="160"></canvas>
+      <span class="sig-label">✍️ Signez ici avec le doigt</span>
+      <div class="sig-actions">
+        <button class="sig-clear" onclick="clearSig('L')">Effacer</button>
+      </div>
+    </div>
   </div>
 
   <button class="btn-generate" onclick="generateDocx()" style="margin-bottom:12px">
@@ -483,7 +542,7 @@ function goTo(n) {
   document.getElementById('stepBadge').textContent = 'Étape ' + labels[n];
   document.getElementById('progressFill').style.width = (n * 20) + '%';
   if (n === 3) renderPieceList();
-  if (n === 5) renderRecap();
+  if (n === 5) { renderRecap(); setTimeout(()=>{ initCanvas('B'); initCanvas('L'); },80); }
   window.scrollTo(0, 0);
 }
 
@@ -724,6 +783,79 @@ function b64ToUint8(b64str) {
   for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
   return arr;
 }
+
+// ── Moteur de signature canvas ────────────────────────────────────
+const sigState = { B:{drawing:false,empty:true}, L:{drawing:false,empty:true} };
+
+function initCanvas(id) {
+  const canvas = document.getElementById('canvas'+id);
+  if(!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.parentElement.offsetWidth || 320;
+  canvas.width  = Math.round(w * dpr);
+  canvas.height = 160 * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.strokeStyle = '#111111';
+  ctx.lineWidth   = 2.5;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  canvas._ctx = ctx; canvas._dpr = dpr; canvas._w = w;
+
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    const s = e.touches ? e.touches[0] : e;
+    return { x: s.clientX - r.left, y: s.clientY - r.top };
+  }
+  function start(e) {
+    e.preventDefault(); e.stopPropagation();
+    sigState[id].drawing = sigState[id].empty === false ? true : !(sigState[id].empty = false) || true;
+    sigState[id].drawing = true; sigState[id].empty = false;
+    const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    document.getElementById('wrap'+id).classList.add('sig-done');
+    const lbl = document.querySelector('#wrap'+id+' .sig-label');
+    if(lbl) lbl.style.opacity = '0';
+  }
+  function move(e) {
+    if(!sigState[id].drawing) return;
+    e.preventDefault(); e.stopPropagation();
+    const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
+  }
+  function stop(e) { sigState[id].drawing = false; }
+
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove',  move,  {passive:false});
+  canvas.addEventListener('touchend',   stop,  {passive:false});
+  canvas.addEventListener('mousedown',  start);
+  canvas.addEventListener('mousemove',  move);
+  canvas.addEventListener('mouseup',    stop);
+  canvas.addEventListener('mouseleave', stop);
+}
+
+function clearSig(id) {
+  const canvas = document.getElementById('canvas'+id);
+  if(!canvas || !canvas._ctx) return;
+  canvas._ctx.clearRect(0, 0, canvas._w, 160);
+  sigState[id].empty = true;
+  document.getElementById('wrap'+id).classList.remove('sig-done');
+  const lbl = document.querySelector('#wrap'+id+' .sig-label');
+  if(lbl) lbl.style.opacity = '1';
+}
+
+function getSigDataURL(id) {
+  const canvas = document.getElementById('canvas'+id);
+  if(!canvas || sigState[id].empty) return null;
+  return canvas.toDataURL('image/png');
+}
+
+// ── Accès robuste à docx ─────────────────────────────────────────
+function getDocx() {
+  if(window.docx && window.docx.Document) return window.docx;
+  if(window.Document && window.Packer)    return window;
+  throw new Error('Librairie docx non chargée — vérifiez la connexion internet et rechargez la page.');
+}
+
 async function generateDocx() {
   document.getElementById('spinner').classList.add('show');
 
@@ -733,7 +865,7 @@ async function generateDocx() {
     const {
       Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
       AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign, ImageRun
-    } = docx;
+    } = getDocx();
 
     const PINK_HEX = 'E91E8C';
     const BLACK_HEX = '111111';
@@ -952,20 +1084,42 @@ async function generateDocx() {
     // ── 7. Signatures ──
     children.push(secTitle('7. Signatures'));
     children.push(para([txt('Les soussignés certifient avoir pris connaissance du présent état des lieux d\'entrée et en approuvent le contenu, y compris les photos contradictoires.',{size:18})],{after:180}));
+
+    // Construire les cellules signature avec image si disponible
+    function sigCell(role, nameVal, canvasId, width) {
+      const sigB64 = getSigDataURL(canvasId);
+      const cellChildren = [
+        para([txt(role, {bold:true, size:20})]),
+        para([txt(nameVal || '', {size:18, color:'444444'})], {after:80}),
+      ];
+      if(sigB64) {
+        try {
+          cellChildren.push(new Paragraph({
+            spacing:{before:60,after:0},
+            children:[new ImageRun({
+              type:'png', data: b64ToUint8(sigB64),
+              transformation:{ width:160, height:60 }
+            })]
+          }));
+        } catch(e) { cellChildren.push(para([txt('(signature)')])); }
+      } else {
+        cellChildren.push(para([txt(''), txt(''), txt('')])); // espace vide
+      }
+      return new TableCell({
+        borders: allNone,
+        width: {size:width, type:WidthType.DXA},
+        margins:{top:80,bottom:80,left:0,right:0},
+        children: cellChildren
+      });
+    }
+
     children.push(new Table({
       width:{size:9026,type:WidthType.DXA}, columnWidths:[4413,200,4413],
-      rows:[
-        new TableRow({ children:[
-          cell('Le(s) bailleur(s) :', {width:4413,bold:true,borders:allNone}),
-          new TableCell({borders:allNone,width:{size:200,type:WidthType.DXA},children:[para([])]}),
-          cell('Le(s) locataire(s) :', {width:4413,bold:true,borders:allNone}),
-        ]}),
-        new TableRow({ height:{value:1800,rule:'atLeast'}, children:[
-          cell(v('sigBailleur')||'', {width:4413,color:'888888',italic:true}),
-          new TableCell({borders:allNone,width:{size:200,type:WidthType.DXA},children:[para([])]}),
-          cell(v('sigLocataire')||'', {width:4413,color:'888888',italic:true}),
-        ]})
-      ]
+      rows:[new TableRow({ height:{value:2000,rule:'atLeast'}, children:[
+        sigCell('Le(s) bailleur(s) :', v('sigBailleur')||v('bailleur'), 'B', 4413),
+        new TableCell({borders:allNone, width:{size:200,type:WidthType.DXA}, children:[para([])]}),
+        sigCell('Le(s) locataire(s) :', v('sigLocataire')||v('locataire'), 'L', 4413),
+      ]})]
     }));
     children.push(para([]));
 
@@ -1191,14 +1345,19 @@ async function generatePDF() {
     const hw = (cw-10)/2;
     ['Bailleur','Locataire'].forEach((role, i) => {
       const bx = margin + i*(hw+10);
+      const nameVal = i===0 ? (v('sigBailleur')||v('bailleur')||'') : (v('sigLocataire')||v('locataire')||'');
+      const sigB64  = getSigDataURL(i===0 ? 'B' : 'L');
       doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...BLACK);
       doc.text('Le '+role+' :', bx, y);
       doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...GRAY);
-      doc.text(i===0 ? (v('sigBailleur')||v('bailleur')||'') : (v('sigLocataire')||v('locataire')||''), bx, y+6);
+      doc.text(nameVal, bx, y+6);
+      if(sigB64) {
+        try { doc.addImage(sigB64, 'PNG', bx, y+10, hw, 22); } catch(e){}
+      }
       // Ligne de signature
       doc.setDrawColor(...GRAY); doc.setLineWidth(0.4);
-      doc.line(bx, y+28, bx+hw, y+28);
-      doc.setFontSize(7); doc.text('Signature', bx, y+32);
+      doc.line(bx, y+34, bx+hw, y+34);
+      doc.setFontSize(7); doc.text('Signature', bx, y+38);
     });
     y += 38;
 
