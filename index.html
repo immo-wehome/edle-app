@@ -607,11 +607,23 @@ textarea{resize:vertical;min-height:70px}
         <div class="field"><label>Index nuit (kWh)</label><input type="number" id="elecNuit" placeholder="0"></div>
       </div>
       <div class="field"><label>N° compteur</label><input type="text" id="numElec" placeholder="EAN-123456789"></div>
-      <label>Photo du compteur</label>
-      <div class="photo-zone" id="pz_elec">
-        <input type="file" accept="image/*" capture="environment" id="fi_elec">
-        <div class="photo-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 0 2-2l2-3h10l2 3a2 2 0 0 0 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>📷 Photo compteur électricité</span></div>
-        <img class="photo-preview" id="pp_elec" src=""><div class="photo-retake">📷 Reprendre</div>
+      <div class="photos-row" style="margin-bottom:0">
+        <div>
+          <label>📷 Compteur jour</label>
+          <div class="photo-zone" id="pz_elec_jour">
+            <input type="file" accept="image/*" capture="environment" id="fi_elec_jour">
+            <div class="photo-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 0 2-2l2-3h10l2 3a2 2 0 0 0 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>📷 Jour</span></div>
+            <img class="photo-preview" id="pp_elec_jour" src=""><div class="photo-retake">📷 Reprendre</div>
+          </div>
+        </div>
+        <div>
+          <label>📷 Compteur nuit</label>
+          <div class="photo-zone" id="pz_elec_nuit">
+            <input type="file" accept="image/*" capture="environment" id="fi_elec_nuit">
+            <div class="photo-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 0 2-2l2-3h10l2 3a2 2 0 0 0 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>📷 Nuit</span></div>
+            <img class="photo-preview" id="pp_elec_nuit" src=""><div class="photo-retake">📷 Reprendre</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -766,7 +778,7 @@ const pieceData = {};
 PIECES.forEach(p => pieceData[p.id] = {});
 
 // Photos compteurs
-const cptPhotos = {elec:null, gaz:null, eau:null};
+const cptPhotos = {elec_jour:null, elec_nuit:null, gaz:null, eau:null};
 
 let currentPiece = null;
 let etatGlobal   = '';
@@ -826,7 +838,8 @@ function resizeImg(src, maxW, maxH, cb) {
 
 // Initialiser les photos des compteurs au chargement
 function initCptPhotos() {
-  attachPhoto('fi_elec','pp_elec','pz_elec', b64 => cptPhotos.elec=b64);
+  attachPhoto('fi_elec_jour','pp_elec_jour','pz_elec_jour', b64 => cptPhotos.elec_jour=b64);
+  attachPhoto('fi_elec_nuit','pp_elec_nuit','pz_elec_nuit', b64 => cptPhotos.elec_nuit=b64);
   attachPhoto('fi_gaz', 'pp_gaz', 'pz_gaz',  b64 => cptPhotos.gaz=b64);
   attachPhoto('fi_eau', 'pp_eau', 'pz_eau',   b64 => cptPhotos.eau=b64);
 }
@@ -1151,7 +1164,7 @@ async function generateDocx() {
     ].forEach(([l,v])=>ch.push(infoRow(l,v)));
 
     // Photos compteurs (3 colonnes)
-    const cptList=[['⚡ Électricité',cptPhotos.elec],['🔥 Gaz',cptPhotos.gaz],['💧 Eau',cptPhotos.eau]];
+    const cptList=[['⚡ Élec. jour',cptPhotos.elec_jour],['⚡ Élec. nuit',cptPhotos.elec_nuit],['🔥 Gaz',cptPhotos.gaz],['💧 Eau',cptPhotos.eau]];
     if(cptList.some(([,b])=>b)){
       ch.push(p([t('Photos des compteurs',{bold:true,size:18,color:'666666'})],{before:120,after:80}));
       ch.push(new Table({
@@ -1353,8 +1366,8 @@ async function generatePDF() {
       doc.setDrawColor(...PK);doc.setLineWidth(1);doc.line(M,y-4,M,y+4);
       doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...BK);
       doc.text(piece.nom,M+4,y+1);y+=11;
-      // Headers
-      const cols=[36,22,58]; // Élément|État|Remarques  (photos séparées en dessous)
+      // Colonnes: Élément(32)|État(18)|Remarques(42)|Photos(90) = 182mm = CW
+      const cols=[32,18,50];
       doc.setFillColor(...BK);doc.rect(M,y,CW,6,'F');
       doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(255,255,255);
       let cx=M+2;
@@ -1363,8 +1376,9 @@ async function generatePDF() {
       ELEMENTS.forEach((elem,idx)=>{
         const d=pieceData[piece.id][elem]||{};
         const hasPic=d.p1||d.p2;
-        const rowH=hasPic?30:8;
-        chkPage(rowH+2);
+        // Hauteur de ligne adaptée : texte seul = 8mm, avec photos = 32mm
+        const rowH=hasPic?32:8;
+        chkPage(rowH+4);
         if(idx%2===0){doc.setFillColor(...LG);doc.rect(M,y,CW,rowH,'F');}
         doc.setDrawColor(200,200,200);doc.setLineWidth(.2);doc.rect(M,y,CW,rowH);
         // Texte
@@ -1381,9 +1395,11 @@ async function generatePDF() {
         }
         // Photos
         if(hasPic){
+          // Photos à droite des colonnes texte, taille respectant le ratio 800×533
+          const photoW=38, photoH=Math.round(photoW*533/800);
           let px=M+cols[0]+cols[1]+cols[2]+2;
           [d.p1,d.p2].forEach(b64=>{
-            if(b64){try{doc.addImage(b64,'JPEG',px,y+1,25,17);px+=27;}catch(e){}}
+            if(b64){try{doc.addImage(b64,'JPEG',px,y+1,photoW,photoH,undefined,'FAST');px+=photoW+2;}catch(e){}}
           });
         }
         y+=rowH;
