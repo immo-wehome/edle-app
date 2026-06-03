@@ -842,10 +842,10 @@ function resizeImg(src, maxSide, cb) {
 
 // Initialiser les photos des compteurs au chargement
 function initCptPhotos() {
-  attachPhoto('fi_elec_jour','pp_elec_jour','pz_elec_jour', b64 => cptPhotos.elec_jour=b64);
-  attachPhoto('fi_elec_nuit','pp_elec_nuit','pz_elec_nuit', b64 => cptPhotos.elec_nuit=b64);
-  attachPhoto('fi_gaz', 'pp_gaz', 'pz_gaz',  b64 => cptPhotos.gaz=b64);
-  attachPhoto('fi_eau', 'pp_eau', 'pz_eau',   b64 => cptPhotos.eau=b64);
+  attachPhoto('fi_elec_jour','pp_elec_jour','pz_elec_jour', d => cptPhotos.elec_jour=d);
+  attachPhoto('fi_elec_nuit','pp_elec_nuit','pz_elec_nuit', d => cptPhotos.elec_nuit=d);
+  attachPhoto('fi_gaz', 'pp_gaz', 'pz_gaz',  d => cptPhotos.gaz=d);
+  attachPhoto('fi_eau', 'pp_eau', 'pz_eau',   d => cptPhotos.eau=d);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1344,12 +1344,12 @@ async function generatePDF() {
      ["Eau",g('eau')],["N° compteur eau",g('numEau')]].forEach(([l,v])=>infoLn(l,v));
 
     // Photos compteurs
-    const cList=[['⚡ Électricité',cptPhotos.elec],['🔥 Gaz',cptPhotos.gaz],['💧 Eau',cptPhotos.eau]];
+    const cList=[['Elec. Jour',cptPhotos.elec_jour],['Elec. Nuit',cptPhotos.elec_nuit],['Gaz',cptPhotos.gaz],['Eau',cptPhotos.eau]];
     if(cList.some(([,b])=>b)){
       chkPage(55);
       doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...GR);
       doc.text('Photos des compteurs',M,y);y+=5;
-      const pw=(CW-8)/3;
+      const pw=(CW-12)/4;
       const ph=Math.round(pw*4/3);
       cList.forEach(([lbl,b64],i)=>{
         const bx=M+i*(pw+4);
