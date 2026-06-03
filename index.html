@@ -1350,12 +1350,13 @@ async function generatePDF() {
       doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...GR);
       doc.text('Photos des compteurs',M,y);y+=5;
       const pw=(CW-8)/3;
+      const ph=Math.round(pw*4/3);
       cList.forEach(([lbl,b64],i)=>{
         const bx=M+i*(pw+4);
         doc.setFillColor(...BK);doc.rect(bx,y,pw,6,'F');
         doc.setFont('helvetica','bold');doc.setFontSize(6);doc.setTextColor(255,255,255);
         doc.text(lbl,bx+pw/2,y+4,{align:'center'});
-        if(b64){const cph=b64.h?Math.round(pw*b64.h/b64.w):Math.round(pw*4/3);try{doc.addImage(b64.b64||b64,'JPEG',bx,y+6,pw,cph,undefined,'FAST');}catch(e){}}
+        if(b64&&b64.b64){const cph=Math.round(pw*b64.h/b64.w);try{doc.addImage(b64.b64,'JPEG',bx,y+6,pw,cph,undefined,'FAST');}catch(e){}}
         else{doc.setFillColor(245,245,245);doc.rect(bx,y+6,pw,ph,'F');}
       });
       y+=6+ph+4;
