@@ -1345,12 +1345,12 @@ async function generatePDF() {
 
     // Photos compteurs
     const cList=[['Elec. Jour',cptPhotos.elec_jour],['Elec. Nuit',cptPhotos.elec_nuit],['Gaz',cptPhotos.gaz],['Eau',cptPhotos.eau]];
+    const pw=(CW-12)/4;
+    const ph=Math.round(pw*4/3);
     if(cList.some(([,b])=>b)){
       chkPage(55);
       doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...GR);
       doc.text('Photos des compteurs',M,y);y+=5;
-      const pw=(CW-12)/4;
-      const ph=Math.round(pw*4/3);
       cList.forEach(([lbl,b64],i)=>{
         const bx=M+i*(pw+4);
         doc.setFillColor(...BK);doc.rect(bx,y,pw,6,'F');
