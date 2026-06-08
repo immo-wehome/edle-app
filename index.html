@@ -931,8 +931,8 @@ function openPiece(piece) {
     if(saved.etat) {
       card.querySelectorAll('.etat-btn').forEach(b=>{if(b.textContent===saved.etat)b.classList.add('active');});
     }
-    if(saved.p1){document.getElementById('pp_'+sid+'_1').src=saved.p1;document.getElementById('pz_'+sid+'_1').classList.add('has-photo');}
-    if(saved.p2){document.getElementById('pp_'+sid+'_2').src=saved.p2;document.getElementById('pz_'+sid+'_2').classList.add('has-photo');}
+    if(saved.p1){document.getElementById('pp_'+sid+'_1').src=saved.p1&&saved.p1.b64?saved.p1.b64:saved.p1;document.getElementById('pz_'+sid+'_1').classList.add('has-photo');}
+    if(saved.p2){document.getElementById('pp_'+sid+'_2').src=saved.p2&&saved.p2.b64?saved.p2.b64:saved.p2;document.getElementById('pz_'+sid+'_2').classList.add('has-photo');}
 
     // Attacher photos
     attachPhoto('fi_'+sid+'_1','pp_'+sid+'_1','pz_'+sid+'_1', b64=>{
@@ -1132,9 +1132,9 @@ async function generateDocx() {
       borders:aT,width:{size:w,type:WidthType.DXA},
       shading:{fill:'F9F9F9',type:ShadingType.CLEAR},
       margins:{top:60,bottom:60,left:80,right:80},
-      children:(photo&&photo.b64)?[new Paragraph({alignment:AlignmentType.CENTER,children:[
+      children:(photo&&photo.b64&&photo.w&&photo.h)?[new Paragraph({alignment:AlignmentType.CENTER,children:[
         new ImageRun({type:'jpeg',data:b64ToArr(photo.b64),transformation:{
-              width:155, height:Math.round(155*photo.h/photo.w)
+              width:155, height:Math.max(1,Math.round(155*photo.h/photo.w))
             }})
       ]})]:[p([t('—',{color:'CCCCCC'})],{align:AlignmentType.CENTER})]
     });
@@ -1185,9 +1185,9 @@ async function generateDocx() {
           new TableRow({height:{value:1600,rule:'atLeast'},children:cptList.map(([,photo],i)=>new TableCell({
             borders:aT,width:{size:cptCWs[i],type:WidthType.DXA},
             shading:{fill:'F9F9F9',type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:60,right:60},
-            children:(photo&&photo.b64)?[new Paragraph({alignment:AlignmentType.CENTER,children:[
+            children:(photo&&photo.b64&&photo.w&&photo.h)?[new Paragraph({alignment:AlignmentType.CENTER,children:[
               new ImageRun({type:'jpeg',data:b64ToArr(photo.b64),transformation:{
-                width:140, height:Math.round(140*photo.h/photo.w)
+                width:140, height:Math.max(1,Math.round(140*photo.h/photo.w))
               }})
             ]})]:[p([t('—',{color:'CCCCCC'})],{align:AlignmentType.CENTER})]
           }))}),
@@ -1276,8 +1276,8 @@ async function generateDocx() {
       styles:{default:{document:{run:{font:'Arial',size:20}}}},
       sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:800,right:720,bottom:900,left:720}}},children:ch}]
     });
-    const buf=await Packer.toBuffer(doc);
-    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    // toBlob fonctionne nativement dans les navigateurs (Safari, Chrome, Firefox)
+    const blob=await Packer.toBlob(doc);
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url; a.download='WH_EdL_'+(g('adresse')||'etat-des-lieux').replace(/[^a-z0-9]/gi,'-').substring(0,40)+'.docx';
