@@ -1370,6 +1370,7 @@ async function generatePDF() {
 
     // 4. Pièces
     for(const piece of PIECES){
+      if(!isDone(piece.id)) continue;
       chkPage(28);
       // En-tête pièce
       doc.setFillColor(249,240,246);doc.rect(M,y-4,CW,8,'F');
