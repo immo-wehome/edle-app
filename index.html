@@ -661,6 +661,12 @@ textarea{resize:vertical;min-height:70px}
     <div class="card-title">Clés & accès</div>
     <div class="field"><label>Clés remises (nombre & type)</label><input type="text" id="cles" placeholder="ex. 2× porte principale, 1× boîte aux lettres"></div>
     <div class="field"><label>Codes / badges / digicode</label><input type="text" id="codes" placeholder="ex. Digicode : 1234#"></div>
+    <label>📷 Photo des clés</label>
+    <div class="photo-zone" id="pz_cles">
+      <input type="file" accept="image/*" capture="environment" id="fi_cles">
+      <div class="photo-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 0 2-2l2-3h10l2 3a2 2 0 0 0 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>📷 Photo des clés</span></div>
+      <img class="photo-preview" id="pp_cles" src=""><div class="photo-retake">📷 Reprendre</div>
+    </div>
   </div>
 
   <button class="btn btn-primary" onclick="goTo(3)">Continuer →</button>
@@ -779,7 +785,7 @@ const pieceData = {};
 PIECES.forEach(p => pieceData[p.id] = {});
 
 // Photos compteurs
-const cptPhotos = {elec_jour:null, elec_nuit:null, gaz:null, eau:null};
+const cptPhotos = {elec_jour:null, elec_nuit:null, gaz:null, eau:null, cles:null};
 
 let currentPiece = null;
 let etatGlobal   = '';
@@ -846,6 +852,7 @@ function initCptPhotos() {
   attachPhoto('fi_elec_nuit','pp_elec_nuit','pz_elec_nuit', d => cptPhotos.elec_nuit=d);
   attachPhoto('fi_gaz', 'pp_gaz', 'pz_gaz',  d => cptPhotos.gaz=d);
   attachPhoto('fi_eau', 'pp_eau', 'pz_eau',   d => cptPhotos.eau=d);
+  attachPhoto('fi_cles','pp_cles','pz_cles',   d => cptPhotos.cles=d);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1367,6 +1374,19 @@ async function generatePDF() {
     // 3. Clés
     chkPage(20);secTit('3. Clés & accès');
     infoLn('Clés remises',g('cles'));infoLn('Codes / badges',g('codes'));y+=4;
+
+    // Photo des clés
+    if(cptPhotos.cles&&cptPhotos.cles.b64){
+      chkPage(55);
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...GR);
+      doc.text('Photo des clés',M,y);y+=5;
+      const kw=60, kh=Math.round(kw*cptPhotos.cles.h/cptPhotos.cles.w);
+      doc.setFillColor(...BK);doc.rect(M,y,kw,6,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(6);doc.setTextColor(255,255,255);
+      doc.text('Clés remises',M+kw/2,y+4,{align:'center'});
+      try{doc.addImage(cptPhotos.cles.b64,'JPEG',M,y+6,kw,kh,undefined,'FAST');}catch(e){}
+      y+=6+kh+6;
+    }
 
     // 4. Pièces
     for(const piece of PIECES){
