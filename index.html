@@ -1212,6 +1212,7 @@ async function generateDocx() {
     // 4. Pièces
     ch.push(secTitle('4. Détail par pièce'));
     for(const piece of PIECES){
+      if(!isDone(piece.id)) continue;
       // En-tête pièce
       ch.push(new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[9026],
         rows:[new TableRow({children:[new TableCell({
@@ -1407,8 +1408,11 @@ async function generatePDF() {
       ELEMENTS.forEach((elem,idx)=>{
         const d=pieceData[piece.id][elem]||{};
         const hasPic=d.p1||d.p2;
-        // Hauteur fixe identique pour toutes les lignes (avec ou sans photo)
-        const rowH=32;
+        const photoW=38;
+        // Hauteur de ligne = max(hauteur texte min, hauteur réelle de la photo)
+        const p1H = d.p1&&d.p1.w ? Math.round(photoW*d.p1.h/d.p1.w) : 0;
+        const p2H = d.p2&&d.p2.w ? Math.round(photoW*d.p2.h/d.p2.w) : 0;
+        const rowH = Math.max(20, p1H, p2H) + 4;
         chkPage(rowH+4);
         if(idx%2===0){doc.setFillColor(...LG);doc.rect(M,y,CW,rowH,'F');}
         doc.setDrawColor(200,200,200);doc.setLineWidth(.2);doc.rect(M,y,CW,rowH);
@@ -1426,12 +1430,9 @@ async function generatePDF() {
         }
         // Photos
         if(hasPic){
-          // Photos à droite des colonnes texte, taille respectant le ratio 800×533
-          const photo1=d.p1||d.p2;
-          const photoW=38, photoH=photo1?Math.round(photoW*photo1.h/photo1.w):Math.round(photoW*4/3);
           let px=M+cols[0]+cols[1]+cols[2]+2;
           [d.p1,d.p2].forEach(b64=>{
-            if(b64&&b64.b64){const phH=Math.round(photoW*b64.h/b64.w);try{doc.addImage(b64.b64,'JPEG',px,y+1,photoW,phH,undefined,'FAST');px+=photoW+2;}catch(e){}}
+            if(b64&&b64.b64&&b64.w){const phH=Math.round(photoW*b64.h/b64.w);try{doc.addImage(b64.b64,'JPEG',px,y+2,photoW,phH,undefined,'FAST');px+=photoW+2;}catch(e){}}
           });
         }
         y+=rowH;
