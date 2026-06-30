@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -992,6 +992,7 @@ function savePiece() {
 // SIGNATURES CANVAS
 // ═══════════════════════════════════════════════════════════════════
 const sigEmpty = {B:true, L:true};
+const sigStore = {B:null, L:null}; // persisted dataURL so re-entering screen 5 doesn't wipe a finished signature
 
 function initSig(id) {
   const canvas = document.getElementById('canvas'+id);
@@ -1005,11 +1006,21 @@ function initSig(id) {
   ctx.strokeStyle='#111'; ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.lineJoin='round';
   canvas._ctx=ctx; canvas._dpr=dpr; canvas._w=w;
 
+  // Restore a previously-completed signature (resizing the canvas above
+  // clears its pixels, so we redraw from the saved image if present)
+  if(sigStore[id]){
+    const img=new Image();
+    img.onload=()=>{ ctx.drawImage(img,0,0,w,160); };
+    img.src=sigStore[id];
+    sigEmpty[id]=false;
+    document.getElementById('wrap'+id).classList.add('signed');
+  }
+
   let drawing=false;
   function pt(e){const r=canvas.getBoundingClientRect(),s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top};}
   function down(e){e.preventDefault();drawing=true;sigEmpty[id]=false;const p=pt(e);ctx.beginPath();ctx.moveTo(p.x,p.y);document.getElementById('wrap'+id).classList.add('signed');}
   function move(e){if(!drawing)return;e.preventDefault();const p=pt(e);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.moveTo(p.x,p.y);}
-  function up(){drawing=false;}
+  function up(){ if(drawing){ drawing=false; sigStore[id]=canvas.toDataURL('image/png'); } }
 
   canvas.addEventListener('touchstart',down,{passive:false});
   canvas.addEventListener('touchmove', move,{passive:false});
@@ -1025,11 +1036,13 @@ function clearSig(id) {
   if(!canvas||!canvas._ctx)return;
   canvas._ctx.clearRect(0,0,canvas._w,160);
   sigEmpty[id]=true;
+  sigStore[id]=null;
   document.getElementById('wrap'+id).classList.remove('signed');
 }
 
 function getSig(id) {
   if(sigEmpty[id])return null;
+  if(sigStore[id])return sigStore[id];
   const c=document.getElementById('canvas'+id);
   return c?c.toDataURL('image/png'):null;
 }
